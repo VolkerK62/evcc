@@ -13,6 +13,7 @@
 				ref="details"
 				class="fw-normal"
 				:class="{ 'text-decoration-underline': detailsClickable }"
+				data-testid="energyflow-entry-details"
 				data-bs-toggle="tooltip"
 				:tabindex="detailsClickable ? 0 : undefined"
 				@click="detailsClicked"
@@ -20,7 +21,7 @@
 				<AnimatedNumber v-if="!isNaN(details)" :to="details" :format="detailsFmt" />
 			</div>
 			<div ref="power" class="power" data-bs-toggle="tooltip" @click="powerClicked">
-				<AnimatedNumber :to="power" :format="kw" />
+				<AnimatedNumber ref="powerNumber" :to="power" :format="kw" />
 			</div>
 		</span>
 	</div>
@@ -77,6 +78,12 @@ export default {
 		detailsTooltip(newVal, oldVal) {
 			if (JSON.stringify(newVal) !== JSON.stringify(oldVal)) {
 				this.updateDetailsTooltip();
+			}
+		},
+		powerInKw(newVal, oldVal) {
+			// force update if unit changes but not the value
+			if (newVal !== oldVal) {
+				this.$refs.powerNumber.forceUpdate();
 			}
 		},
 	},

@@ -17,18 +17,17 @@ type device struct {
 }
 
 type loadpoint struct {
-	Title             string // TODO Perspektivisch können wir was aus core wiederverwenden, für später
-	Charger           string
-	ChargeMeter       string
-	Vehicle           string
-	Mode              string
-	MinCurrent        int
-	MaxCurrent        int
-	Phases            int
-	ResetOnDisconnect string
+	Title       string // TODO Perspektivisch können wir was aus core wiederverwenden, für später
+	Charger     string
+	ChargeMeter string
+	Vehicle     string
+	Mode        string
+	MinCurrent  int
+	MaxCurrent  int
+	Phases      int
 }
 
-type config struct {
+type globalConfig struct {
 	Meters     []device
 	Chargers   []device
 	Vehicles   []device
@@ -48,7 +47,7 @@ type config struct {
 }
 
 type Configure struct {
-	config config
+	config globalConfig
 }
 
 // AddDevice adds a device reference of a specific category to the configuration

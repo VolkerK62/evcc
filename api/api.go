@@ -2,71 +2,12 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 )
 
-//go:generate mockgen -package mock -destination ../mock/mock_api.go github.com/evcc-io/evcc/api Charger,ChargeState,PhaseSwitcher,Identifier,Meter,MeterEnergy,Vehicle,ChargeRater,Battery,Tariff
-
-// ChargeMode is the charge operation mode. Valid values are off, now, minpv and pv
-type ChargeMode string
-
-// Charge modes
-const (
-	ModeEmpty ChargeMode = ""
-	ModeOff   ChargeMode = "off"
-	ModeNow   ChargeMode = "now"
-	ModeMinPV ChargeMode = "minpv"
-	ModePV    ChargeMode = "pv"
-)
-
-// String implements Stringer
-func (c ChargeMode) String() string {
-	return string(c)
-}
-
-// ChargeStatus is the EV's charging status from A to F
-type ChargeStatus string
-
-// Charging states
-const (
-	StatusNone ChargeStatus = ""
-	StatusA    ChargeStatus = "A" // Fzg. angeschlossen: nein    Laden aktiv: nein    - Kabel nicht angeschlossen
-	StatusB    ChargeStatus = "B" // Fzg. angeschlossen:   ja    Laden aktiv: nein    - Kabel angeschlossen
-	StatusC    ChargeStatus = "C" // Fzg. angeschlossen:   ja    Laden aktiv:   ja    - Laden
-	StatusD    ChargeStatus = "D" // Fzg. angeschlossen:   ja    Laden aktiv:   ja    - Laden mit Lüfter
-	StatusE    ChargeStatus = "E" // Fzg. angeschlossen:   ja    Laden aktiv: nein    - Fehler (Kurzschluss)
-	StatusF    ChargeStatus = "F" // Fzg. angeschlossen:   ja    Laden aktiv: nein    - Fehler (Ausfall Wallbox)
-)
-
-// ChargeStatusString converts a string to ChargeStatus
-func ChargeStatusString(s string) (ChargeStatus, error) {
-	switch status := strings.ToUpper(s); status {
-	case "A", "B", "C":
-		return ChargeStatus(status), nil
-	case "D", "E", "F":
-		return ChargeStatus(status), fmt.Errorf("invalid status: %s", status)
-	default:
-		return StatusNone, fmt.Errorf("invalid status: %s", s)
-	}
-}
-
-// ChargeStatusStringWithMapping converts a string to ChargeStatus. In case of error, mapping is applied.
-func ChargeStatusStringWithMapping(s string, m map[ChargeStatus]ChargeStatus) (ChargeStatus, error) {
-	status, err := ChargeStatusString(s)
-	if mappedStatus, ok := m[status]; ok && err != nil {
-		return mappedStatus, nil
-	}
-	return status, err
-}
-
-// String implements Stringer
-func (c ChargeStatus) String() string {
-	return string(c)
-}
+//go:generate mockgen -package api -destination mock.go github.com/evcc-io/evcc/api Charger,ChargeState,CurrentLimiter,PhaseSwitcher,Identifier,Meter,MeterEnergy,Vehicle,ChargeRater,Battery,Tariff,BatteryController
 
 // Meter provides total active power in W
 type Meter interface {
@@ -108,9 +49,19 @@ type ChargeState interface {
 	Status() (ChargeStatus, error)
 }
 
-// CurrentLimiter provides settings charging maximum charging current
-type CurrentLimiter interface {
+// CurrentController provides settings charging maximum charging current
+type CurrentController interface {
 	MaxCurrent(current int64) error
+}
+
+// CurrentGetter provides getting charging maximum charging current for validation
+type CurrentGetter interface {
+	GetMaxCurrent() (float64, error)
+}
+
+// BatteryController optionally allows to control home battery (dis)charging behaviour
+type BatteryController interface {
+	SetBatteryMode(BatteryMode) error
 }
 
 // Charger provides current charging status and enable/disable charging
@@ -118,7 +69,7 @@ type Charger interface {
 	ChargeState
 	Enabled() (bool, error)
 	Enable(enable bool) error
-	CurrentLimiter
+	CurrentController
 }
 
 // ChargerEx provides milli-amp precision charger current control
@@ -161,6 +112,7 @@ type Vehicle interface {
 	Battery
 	BatteryCapacity
 	IconDescriber
+	FeatureDescriber
 	Title() string
 	SetTitle(string)
 	Phases() int
@@ -194,8 +146,14 @@ type VehiclePosition interface {
 	Position() (float64, float64, error)
 }
 
-// SocLimiter returns the vehicles charge limit
+// CurrentLimiter returns the current limits
+type CurrentLimiter interface {
+	GetMinMaxCurrent() (float64, float64, error)
+}
+
+// SocLimiter returns the soc limit
 type SocLimiter interface {
+	// TODO rename LimitSoc
 	TargetSoc() (float64, error)
 }
 

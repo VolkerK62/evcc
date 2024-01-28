@@ -6,6 +6,7 @@
 			tabindex="0"
 			data-bs-toggle="dropdown"
 			aria-expanded="false"
+			data-testid="change-vehicle"
 		>
 			<slot />
 		</div>
@@ -13,27 +14,17 @@
 			<li>
 				<h6 class="dropdown-header">{{ $t("main.vehicle.changeVehicle") }}</h6>
 			</li>
-			<li v-for="vehicle in vehicles" :key="vehicle">
-				<button type="button" class="dropdown-item" @click="changeVehicle(vehicle.id)">
+			<li v-for="vehicle in vehicles" :key="vehicle.name">
+				<button type="button" class="dropdown-item" @click="changeVehicle(vehicle.name)">
 					{{ vehicle.title }}
 				</button>
 			</li>
-			<li v-if="!isUnknown">
+			<li>
 				<button type="button" class="dropdown-item" @click="removeVehicle()">
-					{{ $t("main.vehicle.unknown") }}
+					<span v-if="connected">{{ $t("main.vehicle.unknown") }}</span>
+					<span v-else>{{ $t("main.vehicle.none") }}</span>
 				</button>
 			</li>
-			<div v-if="$hiddenFeatures()">
-				<div class="dropdown-divider"></div>
-				<li>
-					<h6 class="dropdown-header">{{ $t("main.vehicle.moreActions") }}</h6>
-				</li>
-				<li>
-					<button type="button" class="dropdown-item" @click="addVehicle">
-						{{ $t("main.vehicle.addVehicle") }} 🧪
-					</button>
-				</li>
-			</div>
 		</ul>
 	</div>
 </template>
@@ -41,16 +32,15 @@
 <script>
 import "@h2d2/shopicons/es/filled/options";
 import Dropdown from "bootstrap/js/dist/dropdown";
-import Modal from "bootstrap/js/dist/modal";
 
 export default {
 	name: "VehicleOptions",
 	props: {
+		connected: Boolean,
 		id: [String, Number],
 		vehicles: Array,
-		isUnknown: Boolean,
 	},
-	emits: ["change-vehicle", "remove-vehicle", "add-vehicle"],
+	emits: ["change-vehicle", "remove-vehicle"],
 	computed: {
 		dropdownId() {
 			return `vehicleOptionsDropdown${this.id}`;
@@ -63,19 +53,11 @@ export default {
 		this.dropdown?.dispose();
 	},
 	methods: {
-		changeVehicle(index) {
-			this.$emit("change-vehicle", index + 1);
+		changeVehicle(name) {
+			this.$emit("change-vehicle", name);
 		},
 		removeVehicle() {
 			this.$emit("remove-vehicle");
-		},
-		addVehicle() {
-			this.$emit("remove-vehicle");
-
-			const modal = Modal.getOrCreateInstance(
-				document.getElementById("vehicleSettingsModal")
-			);
-			modal.show();
 		},
 	},
 };

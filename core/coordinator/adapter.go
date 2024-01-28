@@ -23,6 +23,10 @@ func (a *adapter) GetVehicles() []api.Vehicle {
 	return a.c.GetVehicles()
 }
 
+func (a *adapter) Owner(v api.Vehicle) loadpoint.API {
+	return a.c.Owner(v)
+}
+
 func (a *adapter) Acquire(v api.Vehicle) {
 	a.c.acquire(a.lp, v)
 }

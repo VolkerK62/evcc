@@ -21,6 +21,7 @@ type Wrapper struct {
 // New creates a new Vehicle
 func New(name string, other map[string]interface{}, err error) api.Vehicle {
 	var cc struct {
+		// add manually since embed is not available here
 		Title    string
 		Icon     string
 		Phases   int
@@ -48,6 +49,11 @@ func New(name string, other map[string]interface{}, err error) api.Vehicle {
 	return v
 }
 
+// Error returns the initialization error
+func (v *Wrapper) Error() string {
+	return v.err.Error()
+}
+
 var _ api.Vehicle = (*Wrapper)(nil)
 
 // Title implements the api.Vehicle interface
@@ -60,7 +66,7 @@ func (v *Wrapper) SetTitle(title string) {
 	v.title = fmt.Sprintf("%s (unavailable)", title)
 }
 
-// Icon implements the api.Vehicle interface
+// Icon implements the api.IconDescriber interface
 func (v *Wrapper) Icon() string {
 	return v.icon
 }

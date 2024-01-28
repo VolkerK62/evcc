@@ -156,7 +156,6 @@ params:
     description:
       de: Zeitüberschreitung
       en: Timeout
-    advanced: true
     example: 10s
     type: duration
   - name: mode
@@ -209,7 +208,7 @@ params:
       en: Identification
     help:
       de: "Kann meist erst später eingetragen werden, siehe: https://docs.evcc.io/docs/guides/vehicles/#erkennung-des-fahrzeugs-an-der-wallbox"
-      en: "Mostly this can be added later, see: https://docs.evcc.io/docs/guides/vehicles/#erkennung-des-fahrzeugs-an-der-wallbox"
+      en: "Mostly this can be added later, see: https://docs.evcc.io/en/docs/guides/vehicles/#determining-which-vehicle-is-at-which-charger"
     type: stringlist
   - name: priority
     description:
@@ -245,19 +244,18 @@ params:
       en: "Icon as shown in user interface"
     type: choice
     validvalues:
-      - bike
-      - bus
       - car
-      - heater
-      - heatercooler
-      - heatpump
+      - bus
+      - van
+      - tractor
+      - bike
+      - scooter
       - moped
       - motorcycle
-      - plug
-      - scooter
-      - tractor
-      - van
+      - generic
       - waterheater
+      - heater
+      - cooler
   - name: ski
     required: true
     description:
@@ -286,6 +284,9 @@ presets:
   vehicle-base:
     params:
       - name: title
+      - name: icon
+        default: car
+        advanced: true
       - name: user
         required: true
       - name: password
@@ -294,9 +295,6 @@ presets:
       - name: capacity
       - name: phases
         advanced: true
-      - name: icon
-        default: car
-        advanced: true
       - name: cache
         default: 15m
         advanced: true
@@ -304,10 +302,6 @@ presets:
   vehicle-identify:
     params:
       - name: mode
-        advanced: true
-      - name: minSoc
-        advanced: true
-      - name: targetSoc
         advanced: true
       - name: minCurrent
         advanced: true
@@ -321,6 +315,14 @@ presets:
   vehicle-language:
     params:
       - name: language
+  tariff-base:
+    params:
+      - name: costs
+        type: number
+        advanced: true
+      - name: tax
+        type: number
+        advanced: true
   eebus:
     params:
       - name: ski
@@ -332,9 +334,15 @@ presets:
       - name: integrateddevice
         type: bool
         advanced: true
-        description:
+        help:
           de: Integriertes Gerät (keine Fahrzeugverbindung)
           en: Integrated device (no vehicle connection)
+      - name: heating
+        type: bool
+        advanced: true
+        help:
+          de: Wärmeerzeuger (°C anstatt %)
+          en: Heating device (°C instead of %)
       - name: icon
         advanced: true
   ocpp:

@@ -2,6 +2,7 @@ package configure
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/evcc-io/evcc/util/sponsor"
 	"github.com/evcc-io/evcc/util/templates"
 	stripmd "github.com/writeas/go-strip-markdown/v2"
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
 
@@ -76,10 +76,8 @@ func (c *CmdConfigure) processDeviceValues(values map[string]interface{}, templa
 			c.addedDeviceIndex--
 			return device, c.errDeviceNotValid
 		}
-	} else {
-		if deviceCategory == DeviceCategoryCharger && testResult == DeviceTestResultValid {
-			device.ChargerHasMeter = true
-		}
+	} else if deviceCategory == DeviceCategoryCharger && testResult == DeviceTestResultValid {
+		device.ChargerHasMeter = true
 	}
 
 	templateItem.Params = append(templateItem.Params, templates.Param{Name: "name", Value: device.Name})
@@ -330,7 +328,7 @@ func (c *CmdConfigure) fetchElements(deviceCategory DeviceCategory) []templates.
 		}
 	}
 
-	sort.Slice(items[:], func(i, j int) bool {
+	sort.Slice(items, func(i, j int) bool {
 		// sort generic templates to the bottom
 		if items[i].Group != "" && items[j].Group == "" {
 			return false
@@ -376,7 +374,7 @@ func (c *CmdConfigure) processConfig(templateItem *templates.Template, deviceCat
 	fmt.Println(c.localizedString("Config_Title"))
 	fmt.Println()
 
-	c.processModbusConfig(templateItem, deviceCategory)
+	c.processModbusConfig(templateItem)
 
 	return c.processParams(templateItem, deviceCategory)
 }
@@ -470,7 +468,7 @@ func (c *CmdConfigure) processInputConfig(param templates.Param) string {
 		help:         help,
 		valueType:    param.Type,
 		validValues:  param.ValidValues,
-		mask:         param.IsMask(),
+		mask:         param.IsMasked(),
 		required:     param.IsRequired(),
 	})
 
@@ -485,7 +483,7 @@ func (c *CmdConfigure) processInputConfig(param templates.Param) string {
 
 // processModbusConfig adds default values from the modbus Param to the template
 // and handles user input for interface type selection
-func (c *CmdConfigure) processModbusConfig(templateItem *templates.Template, deviceCategory DeviceCategory) {
+func (c *CmdConfigure) processModbusConfig(templateItem *templates.Template) {
 	var choices []string
 	var choiceTypes []string
 

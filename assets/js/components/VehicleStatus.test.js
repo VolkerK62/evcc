@@ -41,35 +41,48 @@ describe("min charge", () => {
   });
 });
 
-describe("target charge", () => {
-  const targetTime = "2020-03-16T06:00:00Z";
+describe("plan", () => {
+  const effectivePlanTime = "2020-03-16T06:00:00Z";
   const planProjectedStart = "2020-03-16T02:00:00Z";
-  test("active if target time is set and status is charging", () => {
-    expectStatus({ targetTime, charging: true, connected: true }, "targetChargeActive");
+  test("charging if target time is set, status is charging but planned slot is not active", () => {
+    expectStatus({ effectivePlanTime, charging: true, connected: true }, "charging");
+  });
+  test("active if target time is set, status is charging and planned slot is active", () => {
+    expectStatus(
+      { effectivePlanTime, planActive: true, charging: true, connected: true },
+      "targetChargeActive"
+    );
   });
   test("waiting for vehicle if a target time is set, the charger is enabled but not charging", () => {
-    expectStatus({ targetTime, enabled: true, connected: true }, "targetChargeWaitForVehicle");
+    expectStatus(
+      { effectivePlanTime, planActive: true, enabled: true, connected: true },
+      "targetChargeWaitForVehicle"
+    );
   });
   test("show projected start if not enabled yet", () => {
-    expectStatus({ targetTime, planProjectedStart, connected: true }, "targetChargePlanned", {
-      time: "Mo 03:00",
-    });
+    expectStatus(
+      { effectivePlanTime, planProjectedStart, connected: true },
+      "targetChargePlanned",
+      {
+        time: "Mo 03:00",
+      }
+    );
   });
 });
 
 describe("climating", () => {
   test("show climating status", () => {
     expectStatus(
-      { connected: true, enabled: true, climaterActive: true, charging: true },
+      { connected: true, enabled: true, vehicleClimaterActive: true, charging: true },
       "climating"
     );
     expectStatus(
-      { connected: true, enabled: true, climaterActive: true, charging: false },
+      { connected: true, enabled: true, vehicleClimaterActive: true, charging: false },
       "climating"
     );
   });
   test("only show climating if enabled", () => {
-    expectStatus({ connected: true, enabled: false, climaterActive: true }, "connected");
+    expectStatus({ connected: true, enabled: false, vehicleClimaterActive: true }, "connected");
   });
 });
 
@@ -82,7 +95,7 @@ describe("timer", () => {
         pvRemainingInterpolated: 90,
       },
       "pvEnable",
-      { remaining: "1:30m" }
+      { remaining: "1:30\u202Fm" }
     );
   });
   test("don't show pv enable timer if value is zero", () => {
@@ -104,7 +117,7 @@ describe("timer", () => {
         pvRemainingInterpolated: 90,
       },
       "pvDisable",
-      { remaining: "1:30m" }
+      { remaining: "1:30\u202Fm" }
     );
   });
   test("show phase enable timer if it exists", () => {
@@ -116,7 +129,7 @@ describe("timer", () => {
         phaseRemainingInterpolated: 90,
       },
       "scale1p",
-      { remaining: "1:30m" }
+      { remaining: "1:30\u202Fm" }
     );
   });
   test("show phase disable timer if it exists", () => {
@@ -128,7 +141,7 @@ describe("timer", () => {
         phaseRemainingInterpolated: 90,
       },
       "scale3p",
-      { remaining: "1:30m" }
+      { remaining: "1:30\u202Fm" }
     );
   });
   test("show guard timer if it exists", () => {
@@ -139,7 +152,7 @@ describe("timer", () => {
         guardRemainingInterpolated: 90,
       },
       "guard",
-      { remaining: "1:30m" }
+      { remaining: "1:30\u202Fm" }
     );
   });
   test("don't show guard timer if another timer exists", () => {
@@ -153,7 +166,7 @@ describe("timer", () => {
         guardRemainingInterpolated: 90,
       },
       "pvDisable",
-      { remaining: "30s" }
+      { remaining: "30\u202Fs" }
     );
   });
   test("show guard timer if charging and no other timer exists", () => {
@@ -165,7 +178,7 @@ describe("timer", () => {
         guardRemainingInterpolated: 90,
       },
       "guard",
-      { remaining: "1:30m" }
+      { remaining: "1:30\u202Fm" }
     );
   });
 });
@@ -207,8 +220,9 @@ describe("smart grid charging", () => {
         tariffCo2: 400,
         smartCostLimit: 500,
         smartCostType: "co2",
+        smartCostActive: true,
       },
-      "cleanEnergyCharging"
+      `cleanEnergyCharging:{"co2":"400 g","limit":"500 g"}`
     );
   });
   test("show cheap energy message", () => {
@@ -219,9 +233,10 @@ describe("smart grid charging", () => {
         charging: true,
         tariffGrid: 0.28,
         smartCostLimit: 0.29,
-        currency: "EUR",
+        currency: "CHF",
+        smartCostActive: true,
       },
-      "cheapEnergyCharging"
+      `cheapEnergyCharging:{"price":"28,0 rp","limit":"29,0 rp"}`
     );
   });
 });

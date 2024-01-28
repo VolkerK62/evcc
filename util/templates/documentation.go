@@ -3,7 +3,8 @@ package templates
 import (
 	"bytes"
 	_ "embed"
-	"fmt"
+	"strconv"
+	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
@@ -35,7 +36,7 @@ func (t *Template) RenderDocumentation(product Product, lang string) ([]byte, er
 				case string:
 					t.Params[index].Value = yamlQuote(v)
 				case int:
-					t.Params[index].Value = fmt.Sprintf("%d", v)
+					t.Params[index].Value = strconv.Itoa(v)
 				}
 			}
 		}
@@ -93,10 +94,21 @@ func (t *Template) RenderDocumentation(product Product, lang string) ([]byte, er
 
 	out := new(bytes.Buffer)
 
-	tmpl, err := FuncMap(template.New("yaml")).Parse(documentationTmpl)
-	if err == nil {
-		err = tmpl.Execute(out, data)
+	funcMap := template.FuncMap{
+		"localize": localize(lang),
 	}
 
+	tmpl, err := FuncMap(template.New("yaml")).Funcs(funcMap).Parse(documentationTmpl)
+	if err != nil {
+		panic(err)
+	}
+	err = tmpl.Execute(out, data)
+
 	return []byte(trimLines(out.String())), err
+}
+
+func localize(lang string) func(TextLanguage) string {
+	return func(s TextLanguage) string {
+		return strings.TrimSpace(s.String(lang))
+	}
 }

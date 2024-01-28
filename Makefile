@@ -9,8 +9,9 @@ endif
 VERSION := $(if $(TAG_NAME),$(TAG_NAME),$(SHA))
 BUILD_DATE := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
 BUILD_TAGS := -tags=release
-LD_FLAGS := -X github.com/evcc-io/evcc/server.Version=$(VERSION) -X github.com/evcc-io/evcc/server.Commit=$(COMMIT) -s -w
-BUILD_ARGS := -ldflags='$(LD_FLAGS)'
+TESLA_CLIENT_ID := ${TESLA_CLIENT_ID}
+LD_FLAGS := -X github.com/evcc-io/evcc/server.Version=$(VERSION) -X github.com/evcc-io/evcc/server.Commit=$(COMMIT) -X github.com/evcc-io/evcc/vehicle/tesla-vehicle-command.TESLA_CLIENT_ID=$(TESLA_CLIENT_ID) -s -w
+BUILD_ARGS := -trimpath -ldflags='$(LD_FLAGS)'
 
 # docker
 DOCKER_IMAGE := evcc/evcc
@@ -35,7 +36,7 @@ clean::
 	rm -rf dist/
 
 install::
-	go install $$(go list -f '{{join .Imports " "}}' tools.go)
+	go install $$(go list -e -f '{{join .Imports " "}}' tools.go)
 
 install-ui::
 	npm ci
@@ -58,12 +59,12 @@ lint-ui::
 test-ui::
 	npm test
 
-toml:
+toml::
 	go run packaging/toml.go
 
 test::
 	@echo "Running testsuite"
-	CGO_ENABLED=0 go test $(BUILD_TAGS),test ./...
+	CGO_ENABLED=0 go test $(BUILD_TAGS) ./...
 
 porcelain::
 	gofmt -w -l $$(find . -name '*.go')
@@ -74,7 +75,7 @@ build::
 	@echo Version: $(VERSION) $(SHA) $(BUILD_DATE)
 	CGO_ENABLED=0 go build -v $(BUILD_TAGS) $(BUILD_ARGS)
 
-snapshot:
+snapshot::
 	goreleaser --snapshot --skip-publish --clean
 
 release::
@@ -134,11 +135,11 @@ soc::
 patch-asn1-sudo::
 	# echo $(GOROOT)
 	cat $(GOROOT)/src/vendor/golang.org/x/crypto/cryptobyte/asn1.go | grep -C 1 "out = true"
-	sudo patch -N -t -d $(GOROOT)/src/vendor/golang.org/x/crypto/cryptobyte -i $(CURRDIR)/patch/asn1.diff
+	sudo patch -N -t -d $(GOROOT)/src/vendor/golang.org/x/crypto/cryptobyte -i $(CURRDIR)/packaging/patch/asn1.diff
 	cat $(GOROOT)/src/vendor/golang.org/x/crypto/cryptobyte/asn1.go | grep -C 1 "out = true"
 
 patch-asn1::
 	# echo $(GOROOT)
 	cat $(GOROOT)/src/vendor/golang.org/x/crypto/cryptobyte/asn1.go | grep -C 1 "out = true"
-	patch -N -t -d $(GOROOT)/src/vendor/golang.org/x/crypto/cryptobyte -i $(CURRDIR)/patch/asn1.diff
+	patch -N -t -d $(GOROOT)/src/vendor/golang.org/x/crypto/cryptobyte -i $(CURRDIR)/packaging/patch/asn1.diff
 	cat $(GOROOT)/src/vendor/golang.org/x/crypto/cryptobyte/asn1.go | grep -C 1 "out = true"

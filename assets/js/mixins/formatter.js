@@ -42,7 +42,7 @@ export default {
       if (withUnit) {
         unit = kw ? " kW" : " W";
       }
-      return `${new Intl.NumberFormat(this.$i18n.locale, {
+      return `${new Intl.NumberFormat(this.$i18n?.locale, {
         style: "decimal",
         minimumFractionDigits: digits,
         maximumFractionDigits: digits,
@@ -51,9 +51,11 @@ export default {
     fmtKWh: function (watt, kw = true, withUnit = true, digits) {
       return this.fmtKw(watt, kw, withUnit, digits) + (withUnit ? "h" : "");
     },
-    fmtNumber: function (number, decimals) {
-      return new Intl.NumberFormat(this.$i18n.locale, {
-        style: "decimal",
+    fmtNumber: function (number, decimals, unit) {
+      const style = unit ? "unit" : "decimal";
+      return new Intl.NumberFormat(this.$i18n?.locale, {
+        style,
+        unit,
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       }).format(number);
@@ -70,19 +72,13 @@ export default {
     fmtUnit: function (val) {
       return Math.abs(val) >= this.fmtLimit ? "k" : "";
     },
-    fmtDuration: function (d) {
-      if (d <= 0 || d == null) {
-        return "—";
-      }
-      var seconds = "0" + (d % 60);
-      var minutes = "0" + (Math.floor(d / 60) % 60);
-      var hours = "" + Math.floor(d / 3600);
-      if (hours.length < 2) {
-        hours = "0" + hours;
-      }
-      return hours + ":" + minutes.substr(-2) + ":" + seconds.substr(-2);
+    fmtNumberToLocale(val, pad = 0) {
+      return val.toLocaleString(this.$i18n?.locale).padStart(pad, "0");
     },
-    fmtShortDuration: function (duration = 0, withUnit = false) {
+    fmtDurationNs(duration = 0, withUnit = true, minUnit = "s") {
+      return this.fmtDuration(duration / 1e9, withUnit, minUnit);
+    },
+    fmtDuration: function (duration = 0, withUnit = true, minUnit = "s") {
       if (duration <= 0) {
         return "—";
       }
@@ -91,31 +87,21 @@ export default {
       var minutes = Math.floor(duration / 60) % 60;
       var hours = Math.floor(duration / 3600);
       var result = "";
-      if (hours >= 1) {
-        result = hours + ":" + `${minutes}`.padStart(2, "0");
-      } else if (minutes >= 1) {
-        result = minutes + ":" + `${seconds}`.padStart(2, "0");
+      let unit = "";
+      if (hours >= 1 || minUnit === "h") {
+        result = `${this.fmtNumberToLocale(hours)}:${this.fmtNumberToLocale(minutes, 2)}`;
+        unit = "h";
+      } else if (minutes >= 1 || minUnit === "m") {
+        result = `${this.fmtNumberToLocale(minutes)}:${this.fmtNumberToLocale(seconds, 2)}`;
+        unit = "m";
       } else {
-        result = `${seconds}`;
+        result = `${this.fmtNumberToLocale(seconds)}`;
+        unit = "s";
       }
       if (withUnit) {
-        result += this.fmtShortDurationUnit(duration);
+        result += `\u202F${unit}`;
       }
       return result;
-    },
-    fmtShortDurationUnit: function (duration = 0) {
-      if (duration <= 0) {
-        return "";
-      }
-      var minutes = Math.floor(duration / 60) % 60;
-      var hours = Math.floor(duration / 3600);
-      if (hours >= 1) {
-        return "h";
-      }
-      if (minutes >= 1) {
-        return "m";
-      }
-      return "s";
     },
     fmtDayString: function (date) {
       const YY = `${date.getFullYear()}`;
@@ -138,7 +124,7 @@ export default {
       return tomorrow.toDateString() === date.toDateString();
     },
     weekdayPrefix: function (date) {
-      const rtf = new Intl.RelativeTimeFormat(this.$i18n.locale, { numeric: "auto" });
+      const rtf = new Intl.RelativeTimeFormat(this.$i18n?.locale, { numeric: "auto" });
 
       if (this.isToday(date)) {
         return rtf.formatToParts(0, "day")[0].value;
@@ -146,25 +132,25 @@ export default {
       if (this.isTomorrow(date)) {
         return rtf.formatToParts(1, "day")[0].value;
       }
-      return new Intl.DateTimeFormat(this.$i18n.locale, {
+      return new Intl.DateTimeFormat(this.$i18n?.locale, {
         weekday: "short",
       }).format(date);
     },
     weekdayTime: function (date) {
-      return new Intl.DateTimeFormat(this.$i18n.locale, {
+      return new Intl.DateTimeFormat(this.$i18n?.locale, {
         weekday: "short",
         hour: "numeric",
         minute: "numeric",
       }).format(date);
     },
     weekdayShort: function (date) {
-      return new Intl.DateTimeFormat(this.$i18n.locale, {
+      return new Intl.DateTimeFormat(this.$i18n?.locale, {
         weekday: "short",
       }).format(date);
     },
     fmtAbsoluteDate: function (date) {
       const weekday = this.weekdayPrefix(date);
-      const hour = new Intl.DateTimeFormat(this.$i18n.locale, {
+      const hour = new Intl.DateTimeFormat(this.$i18n?.locale, {
         hour: "numeric",
         minute: "numeric",
       }).format(date);
@@ -172,7 +158,7 @@ export default {
       return `${weekday} ${hour}`;
     },
     fmtFullDateTime: function (date, short) {
-      return new Intl.DateTimeFormat(this.$i18n.locale, {
+      return new Intl.DateTimeFormat(this.$i18n?.locale, {
         weekday: short ? undefined : "short",
         month: short ? "numeric" : "short",
         day: "numeric",
@@ -181,25 +167,25 @@ export default {
       }).format(date);
     },
     fmtMonthYear: function (date) {
-      return new Intl.DateTimeFormat(this.$i18n.locale, {
+      return new Intl.DateTimeFormat(this.$i18n?.locale, {
         month: "long",
         year: "numeric",
       }).format(date);
     },
     fmtMonth: function (date, short) {
-      return new Intl.DateTimeFormat(this.$i18n.locale, {
+      return new Intl.DateTimeFormat(this.$i18n?.locale, {
         month: short ? "short" : "long",
       }).format(date);
     },
     fmtDayMonthYear: function (date) {
-      return new Intl.DateTimeFormat(this.$i18n.locale, {
+      return new Intl.DateTimeFormat(this.$i18n?.locale, {
         day: "numeric",
         month: "long",
         year: "numeric",
       }).format(date);
     },
     fmtMoney: function (amout = 0, currency = "EUR", decimals = true) {
-      return new Intl.NumberFormat(this.$i18n.locale, {
+      return new Intl.NumberFormat(this.$i18n?.locale, {
         style: "currency",
         currency,
         currencyDisplay: "code",
@@ -222,7 +208,7 @@ export default {
         minimumFractionDigits = 1;
         maximumFractionDigits = 1;
       }
-      const price = new Intl.NumberFormat(this.$i18n.locale, {
+      const price = new Intl.NumberFormat(this.$i18n?.locale, {
         style: "decimal",
         minimumFractionDigits,
         maximumFractionDigits,
@@ -244,12 +230,24 @@ export default {
         second: 1000,
       };
 
-      const rtf = new Intl.RelativeTimeFormat(this.$i18n.locale, { numeric: "auto" });
+      const rtf = new Intl.RelativeTimeFormat(this.$i18n?.locale, { numeric: "auto" });
 
       // "Math.abs" accounts for both "past" & "future" scenarios
       for (var u in units)
         if (Math.abs(elapsed) > units[u] || u == "second")
           return rtf.format(Math.round(elapsed / units[u]), u);
+    },
+    fmtSocOption: function (soc, rangePerSoc, distanceUnit, heating) {
+      let result = heating ? this.fmtTemperature(soc) : `${this.fmtNumber(soc, 0)}%`;
+      if (rangePerSoc && distanceUnit) {
+        const range = soc * rangePerSoc;
+        result += ` (${this.fmtNumber(range, 0)} ${distanceUnit})`;
+      }
+      return result;
+    },
+    fmtTemperature: function (value) {
+      // TODO: handle fahrenheit
+      return this.fmtNumber(value, 1, "celsius");
     },
   },
 };

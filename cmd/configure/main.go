@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -18,7 +19,6 @@ import (
 	"github.com/evcc-io/evcc/util/templates"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 	"golang.org/x/text/language"
 )
 
@@ -201,7 +201,7 @@ func (c *CmdConfigure) flowNewConfigFile() {
 	filename := DefaultConfigFilename
 
 	for {
-		file, err := os.OpenFile(filename, os.O_WRONLY, 0666)
+		file, err := os.OpenFile(filename, os.O_WRONLY, 0o666)
 		if errors.Is(err, os.ErrNotExist) {
 			break
 		}
@@ -209,10 +209,8 @@ func (c *CmdConfigure) flowNewConfigFile() {
 		// in case of permission error, we can't write to the file anyway
 		if os.IsPermission(err) {
 			fmt.Println(c.localizedString("File_Permissions", localizeMap{"FileName": filename}))
-		} else {
-			if c.askYesNo(c.localizedString("File_Exists", localizeMap{"FileName": filename})) {
-				break
-			}
+		} else if c.askYesNo(c.localizedString("File_Exists", localizeMap{"FileName": filename})) {
+			break
 		}
 
 		filename = c.askValue(question{
@@ -302,7 +300,6 @@ func (c *CmdConfigure) configureLoadpoints() {
 	fmt.Println(c.localizedString("Loadpoint_Setup"))
 
 	for {
-
 		loadpointTitle := c.askValue(question{
 			label:        c.localizedString("Loadpoint_Title"),
 			defaultValue: c.localizedString("Loadpoint_DefaultTitle"),
@@ -429,12 +426,6 @@ func (c *CmdConfigure) configureLoadpoints() {
 
 		fmt.Println()
 		loadpoint.Mode = c.askValue(question{valueType: templates.TypeChargeModes, excludeNone: true})
-
-		fmt.Println()
-		loadpoint.ResetOnDisconnect = c.askValue(question{
-			label:     c.localizedString("Loadpoint_ResetOnDisconnect"),
-			valueType: templates.TypeBool,
-		})
 		c.configuration.AddLoadpoint(loadpoint)
 
 		fmt.Println()

@@ -1,6 +1,10 @@
 [batterySettings]
 batteryLevel = "Kaupiklio įkrova"
 capacity = "{energy} iš {total}"
+control = "Kaupiklio valdymas"
+discharge = "Neleisti kaupiklio iškrovimo režime Greitas ir planiniame įkrovime."
+disclaimerHint = "Pastaba:"
+disclaimerText = "Šie nustatymai paveikia tik įkrovimą Saulė. Įkrovimo algoritmas atitinkamai pakeičiamas."
 legendBottomName = "namo pirmumas"
 legendBottomSubline = "nenaudojama įkrovimui"
 legendMiddleName = "pirmiau automobilis"
@@ -10,13 +14,45 @@ legendTopAutostart = "startuoja automatiškai"
 legendTopName = "kaupiklis padeda įkrauti"
 legendTopSubline = "be pertraukų"
 modalTitle = "Kaupiklio nustatymai"
-note = "Pastaba: Šie nustatymai paveikia tik įkrovimą Saulė. Įkrovimo algoritmas atitinkamai pakeičiamas."
 
 [batterySettings.bufferStart]
 full = "kai beveik pilnas"
 low = "kai nevisai pilnas"
 medium = "kai puspilnis"
 never = "tik su pakankamu pertekliumi"
+
+[config]
+
+[config.form]
+example = "Pavyzdys"
+optional = "pasirinktinai"
+
+[config.main]
+addVehicle = "Pridėti automobilį"
+edit = "redaguoti"
+title = "Konfigūracija"
+vehicles = "Mano automobiliai"
+
+[config.validation]
+failed = "nepavyko"
+label = "Statusas"
+running = "tikrinama…"
+success = "sėkmingai"
+unknown = "nežinomas"
+validate = "tikrinti"
+
+[config.vehicle]
+cancel = "Atšaukti"
+delete = "Ištrinti automobilį"
+generic = "Kitos integracijos"
+offline = "Tipinis automobilis"
+online = "Automobiliai su internetiniu API"
+save = "Išsaugoti"
+scooter = "Motoroleris"
+template = "Gamintojas"
+titleAdd = "Pridėti Automobilį"
+titleEdit = "Koreguoti Automobilį"
+validateSave = "Patikrinti ir išsaugoti"
 
 [footer]
 
@@ -33,20 +69,32 @@ powerSub2 = "įkrauna..."
 tabTitle = "Bendruomenės"
 
 [footer.savings]
+co2Saved = "{value} neišmesta"
+co2Title = "CO₂ Išmetimai"
+configurePriceCo2 = "Išmokite sukonfigūruoti kainą ir CO₂ duomenis."
 footerLong = "{percent}% saulės energija"
 footerShort = "{percent}% saulės"
 modalTitle = "Įkrovimo energijos apžvalga"
+moneySaved = "{value} sutaupyta"
 percentGrid = "{grid} kWh tinklo"
 percentSelf = "{self} kWh saulės"
 percentTitle = "Saulės Energija"
+periodLabel = "Laikotarpis:"
 priceFeedIn = "{feedInPrice} eksporto"
 priceGrid = "{gridPrice} tinklo"
 priceTitle = "Energijos Kaina"
+referenceGrid = "tinklas"
+referenceLabel = "Atskaitos duomenys:"
 savingsComparedToGrid = "palyginus su tinklu"
 savingsTitle = "Sutaupyta"
 savingsTotalEnergy = "{total} kWh įkrauta"
 since = "nuo {since}"
 tabTitle = "Mano"
+
+[footer.savings.period]
+30d = "paskutinės 30 dienų"
+365d = "paskutinės 365 dienos"
+total = "Iš viso"
 
 [footer.sponsor]
 becomeSponsor = "Tapkite rėmėju"
@@ -124,19 +172,25 @@ modalTitle = "Ar tikrai norite restartuoti?"
 vehicles = "Autoparkas"
 
 [main.chargingPlan]
-activeLabel = "{time}"
+active = "Aktyvus"
 arrivalTab = "Atvykimas"
+day = "Diena"
 departureTab = "Išvykimas"
+goal = "Įkrovimo tikslas"
 modalTitle = "Įkrovimo planas"
 none = "nėra"
+remove = "Pašalinti"
+time = "Laikas"
 title = "Planas"
 titleMinSoc = "Minimali įkrova"
 titleTargetCharge = "Išvykimas"
+update = "Patvirtinti"
 
 [main.energyflow]
 battery = "Kaupiklis"
 batteryCharge = "Kaupiklis įkraunamas"
 batteryDischarge = "Kaupiklis iškraunamas"
+batteryHold = "Kaupiklis (užblokuotas)"
 batteryTooltip = "{energy} iš {total} ({soc})"
 gridImport = "Iš tinklo"
 homePower = "Namo suvartojimas"
@@ -162,10 +216,13 @@ solar = "Saulės"
 [main.loadpointSettings]
 currents = "Įkrovimo srovė"
 default = "standartiškai"
-disclaimerHint = "Pastaba:"
-disclaimerText = "Šie pakeitimai neišlieka po evcc serverio restarto."
+onlyForSocBasedCharging = "Šie pasirinkimai galimi tik automobiliams su žinomu įkrovos lygiu."
 title = "Nustatymai {0}"
 vehicle = "Automobilis"
+
+[main.loadpointSettings.limitSoc]
+description = "Įkrovimo limitas, naudojamas, prijungus šį automobilį."
+label = "Standartinis limitas"
 
 [main.loadpointSettings.maxCurrent]
 label = "Max. Srovė"
@@ -174,7 +231,7 @@ label = "Max. Srovė"
 label = "Min. Srovė"
 
 [main.loadpointSettings.minSoc]
-description = "Minimali įkrova. Automobilis įkraunamas „Greitai” iki {0}% nustatyme „Saulė”, toliau įkraunamas tik saulės energijos pertekliumi."
+description = "Automobilis įkraunamas „Greitai” iki {0}% nustatyme „Saulė”, toliau įkraunamas tik saulės energijos pertekliumi. Padeda užtikrinti minimalią įkrovą dienomis, kai mažai saulės."
 label = "Minimali įkrova %"
 
 [main.loadpointSettings.phasesConfigured]
@@ -197,26 +254,36 @@ logout = "atsijungti"
 
 [main.targetCharge]
 activate = "Aktyvuoti"
-activeLabel = "{time}"
 co2Limit = "CO₂ riba iš {co2}"
 costLimitIgnore = "Šiuo laikotarpiu sukonfigūruotas {limit} bus ignoruojamas."
+currentPlan = "Planas aktyvus"
 descriptionEnergy = "Iki kada {targetEnergy} turėtų būti įkrauta į automobilį?"
 descriptionSoc = "Kada automobilis turėtų būti įkrautas iki {targetSoc}%?"
 inactiveLabel = "Suplanuotas laikas"
 modalTitle = "Nustatyti įkrovimo pabaigos laiką"
+noActivePlan = "Nėra Aktyvaus Plano"
+notReachableInTime = "Tikslo pasiekti nespėsime. Numatoma pabaiga: {endTime}."
+onlyInPvMode = "Įkrovimo planas veikia tik nustatyme Saulė."
+planDescription = "Įveskite išvykimo laiką ir evcc įkraus automobilį kiek įmanoma ekonomiškiau arba ekologiškiau."
 planDuration = "Įkrovimo laikas"
 planPeriodLabel = "Periodas"
 planPeriodValue = "{start} iki {end}"
 planUnknown = "dar nežinome"
+preview = "Peržvelgti"
 priceLimit = "kainos limitas {price}"
 remove = "Panaikinti"
+setPlan = "Nustatyti įkrovimo planą"
 setTargetTime = "nesuplanuotas"
+targetIsAboveLimit = "Sukonfigūruotas įkrovimo limitas {limit} šiuo periodu bus ignoruojamas."
+targetIsAboveVehicleLimit = "Padidinkite automobilio limitą ({limit}), kad pasiektumėte įkrovimo tikslą."
 targetIsInThePast = "Pasirinkite laiką ateityje."
 targetIsTooFarInTheFuture = "Pakoreguosime planą, kai tik gausime naujų duomenų."
 title = "Planinis Įkrovimas"
 today = "šiandien"
 tomorrow = "rytoj"
 update = "Atnaujinti"
+vehicleCapacityDocs = "Išmokite, kaip tai sukonfigūruoti."
+vehicleCapacityRequired = "Norint numatyti įkrovimo trukmę reikalinga automobilio baterijos talpa"
 
 [main.targetChargePlan]
 chargeDuration = "Įkrovimo trukmė"
@@ -237,6 +304,8 @@ fallbackName = "Automobilis"
 moreActions = "Daugiau veiksmų"
 none = "Nėra automobilio"
 targetSoc = "Limitas"
+temp = "t."
+tempLimit = "Temp. limitas"
 unknown = "Nežinomas automobilis"
 vehicleSoc = "Baterija"
 
@@ -249,8 +318,8 @@ vehicleTarget = "Automobilyje nustatytas limitas: {soc}%"
 
 [main.vehicleStatus]
 charging = "Įkraunama..."
-cheapEnergyCharging = "Energijos kaina žema. Įkraunama…"
-cleanEnergyCharging = "Yra švarios energijos. Įkraunama..."
+cheapEnergyCharging = "Įkraunama pigia energija: {price} (limitas {limit})"
+cleanEnergyCharging = "Įkraunama švaria energija: {co2} (limitas {limit})"
 climating = "Aptiktas išankstinis kondicionavimas."
 connected = "Prijungtas."
 disconnected = "Neprijungtas."
@@ -292,7 +361,9 @@ started = "Pradėta"
 title = "Įkrovimo sesija"
 
 [sessions]
+avgPower = "⌀ Galia"
 avgPrice = "⌀ Kaina"
+chargeDuration = "Trukmė"
 co2 = "⌀ CO₂"
 csvMonth = "Atsisiųsti {month} CSV"
 csvTotal = "Atsisiųsti visą CSV"
@@ -325,7 +396,7 @@ allVehicles = "visi automobiliai"
 filter = "Filtruoti"
 
 [settings]
-title = "Nustatymai"
+title = "Bendrieji Nustatymai"
 
 [settings.gridDetails]
 co2 = "CO₂"
@@ -362,7 +433,7 @@ mi = "mylios"
 
 [startupError]
 configFile = "Naudojamas konfiguracijos failas:"
-configuration = "Konfigūracija"
+configuration = "Konfiguracija"
 description = "Patikrinkite konfigūracijos failą. Jei klaidos žinutė jums nepadėjo, atsakymų ieškokite mūsų {0}."
 discussions = "GitHub Diskusijose"
 fixAndRestart = "Pabandykite Ištaisyti klaidą ir perkrauti serverį."

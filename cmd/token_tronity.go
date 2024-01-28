@@ -11,6 +11,7 @@ import (
 
 	"github.com/evcc-io/evcc/api"
 	"github.com/evcc-io/evcc/util"
+	"github.com/evcc-io/evcc/util/config"
 	"github.com/evcc-io/evcc/vehicle"
 	"github.com/evcc-io/evcc/vehicle/tronity"
 	"github.com/samber/lo"
@@ -32,7 +33,6 @@ func tokenExchangeHandler(oc *oauth2.Config, state string, resC chan *oauth2.Tok
 		token, err := oc.Exchange(ctx, code,
 			oauth2.SetAuthURLParam("grant_type", "code"), // app
 		)
-
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprintln(w, err)
@@ -100,7 +100,7 @@ func tronityAuthorize(addr string, oc *oauth2.Config) (*oauth2.Token, error) {
 	}
 }
 
-func tronityToken(conf config, vehicleConf qualifiedConfig) (*oauth2.Token, error) {
+func tronityToken(conf globalConfig, vehicleConf config.Named) (*oauth2.Token, error) {
 	var cc struct {
 		Credentials vehicle.ClientCredentials
 		RedirectURI string

@@ -5,6 +5,9 @@ products:
 group: generic
 params:
   - name: title
+  - name: icon
+    default: car
+    advanced: true
   - name: akey
     required: true
   - name: token
@@ -12,9 +15,6 @@ params:
   - name: capacity
     type: float
   - name: phases
-    advanced: true
-  - name: icon
-    default: car
     advanced: true
   - preset: vehicle-identify
 render: |
@@ -29,6 +29,5 @@ render: |
   soc:
     source: http
     uri: https://app.evnotify.de/soc?akey={{ urlEncode .akey }}&token={{ urlEncode .token }} # evNotify Server + AKEY
-    method: GET
     jq: .soc_display
   {{ include "vehicle-identify" . }}

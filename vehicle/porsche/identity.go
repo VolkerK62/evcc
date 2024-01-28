@@ -2,18 +2,14 @@ package porsche
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"time"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/evcc-io/evcc/util"
+	"github.com/evcc-io/evcc/util/oauth"
 	"github.com/evcc-io/evcc/util/request"
-	cv "github.com/nirasan/go-oauth-pkce-code-verifier"
 	"github.com/samber/lo"
 	"golang.org/x/oauth2"
 )
@@ -33,39 +29,51 @@ var (
 			TokenURL:  OAuthURI + "/oauth/token",
 			AuthStyle: oauth2.AuthStyleInParams,
 		},
-		Scopes: []string{"openid", "offline_access"},
+		Scopes: []string{
+			"openid", "offline_access", "profile", "email",
+			"pid:user_profile.vehicles:read",
+			// "pid:user_profile.addresses:read",
+			// "pid:user_profile.birthdate:read",
+			// "pid:user_profile.dealers:read",
+			// "pid:user_profile.emails:read",
+			// "pid:user_profile.locale:read",
+			// "pid:user_profile.name:read",
+			// "pid:user_profile.phones:read",
+			// "pid:user_profile.porscheid:read",
+			// "pid:user_profile.vehicles:read",
+			// "pid:user_profile.vehicles:register",
+		},
 	}
 )
 
+// https://github.com/CJNE/pyporscheconnectapi
+
 // Identity is the Porsche Identity client
 type Identity struct {
-	log *util.Logger
 	*request.Helper
-	oauth2.TokenSource
+	user, password string
 }
 
 // NewIdentity creates Porsche identity
-func NewIdentity(log *util.Logger) *Identity {
+func NewIdentity(log *util.Logger, user, password string) (oauth2.TokenSource, error) {
 	v := &Identity{
-		log:    log,
-		Helper: request.NewHelper(log),
+		Helper:   request.NewHelper(log),
+		user:     user,
+		password: password,
 	}
 
-	return v
+	token, err := v.login()
+
+	return oauth.RefreshTokenSource(token, v), err
 }
 
-func (v *Identity) Login(oc *oauth2.Config, user, password string) error {
-	cv, err := cv.CreateCodeVerifier()
-	if err != nil {
-		return err
-	}
+func (v *Identity) login() (*oauth2.Token, error) {
+	cv := oauth2.GenerateVerifier()
 
 	state := lo.RandomString(16, lo.AlphanumericCharset)
-	uri := OAuth2Config.AuthCodeURL(state,
+	uri := OAuth2Config.AuthCodeURL(state, oauth2.S256ChallengeOption(cv),
 		oauth2.SetAuthURLParam("audience", ApiURI),
 		oauth2.SetAuthURLParam("ui_locales", "de-DE"),
-		oauth2.SetAuthURLParam("code_challenge", cv.CodeChallengeS256()),
-		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
 	)
 
 	v.Client.Jar, _ = cookiejar.New(nil)
@@ -77,98 +85,94 @@ func (v *Identity) Login(oc *oauth2.Config, user, password string) error {
 
 	resp, err := v.Client.Get(uri)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusFound {
+		return nil, fmt.Errorf("unexpected status %d", resp.StatusCode)
+	}
+
+	// username
 	u, err := url.Parse(resp.Header.Get("Location"))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	query := u.Query()
-	for _, p := range []string{"client_id", "code_challenge", "scope", "protocol"} {
-		query.Del(p)
-	}
-	for k, v := range map[string]string{
-		"connection": "Username-Password-Authentication",
-		"tenant":     "porsche-production",
-		"sec":        "high",
-	} {
-		query.Set(k, v)
-	}
-	query.Set("client_id", oc.ClientID)
-	query.Set("username", user)
-	query.Set("password", password)
+	query.Set("username", v.user)
+	query.Set("js-available", "true")
+	query.Set("webauthn-available", "false")
+	query.Set("is-brave", "false")
+	query.Set("webauthn-platform-available", "false")
+	query.Set("action", "default")
 
-	uri = fmt.Sprintf("%s/usernamepassword/login", OAuthURI)
-	resp, err = v.PostForm(uri, query)
+	resp, err = v.PostForm(OAuthURI+u.String(), query)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		var res struct {
-			Description string `json:"description"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&res); err == nil && res.Description != "" {
-			return errors.New(res.Description)
-		}
-		return fmt.Errorf("unexpected status %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusFound {
+		return nil, fmt.Errorf("unexpected status %d", resp.StatusCode)
 	}
 
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	// password
+	u, err = url.Parse(resp.Header.Get("Location"))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	query = make(url.Values)
-	doc.Find("input[type=hidden]").Each(func(_ int, el *goquery.Selection) {
-		if name, ok := el.Attr("name"); ok {
-			val, _ := el.Attr("value")
-			query.Set(name, val)
-		}
-	})
+	query = u.Query()
+	query.Set("username", v.user)
+	query.Set("password", v.password)
+	query.Set("action", "default")
+
+	resp, err = v.PostForm(OAuthURI+u.String(), query)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusFound {
+		return nil, fmt.Errorf("unexpected status %d", resp.StatusCode)
+	}
 
 	var param request.InterceptResult
 	v.Client.CheckRedirect, param = request.InterceptRedirect("code", true)
 
-	uri = fmt.Sprintf("%s/login/callback", OAuthURI)
-	resp, err = v.PostForm(uri, query)
+	// resume
+	u, err = url.Parse(resp.Header.Get("Location"))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	resp.Body.Close()
+
+	resp, err = v.Get(OAuthURI + u.String())
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
 
 	code, err := param()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	cctx := context.WithValue(context.Background(), oauth2.HTTPClient, v.Client)
 	ctx, cancel := context.WithTimeout(cctx, request.Timeout)
 	defer cancel()
 
-	token, err := oc.Exchange(ctx, code,
-		oauth2.SetAuthURLParam("code_verifier", cv.CodeChallengePlain()),
-	)
-	if err != nil {
-		return err
-	}
-
-	ts := oc.TokenSource(cctx, token)
-	v.TokenSource = oauth2.ReuseTokenSourceWithExpiry(token, ts, 15*time.Minute)
-
-	go v.refresh()
-
-	return nil
+	return OAuth2Config.Exchange(ctx, code, oauth2.VerifierOption(cv))
 }
 
-func (v *Identity) refresh() {
-	for range time.Tick(5 * time.Minute) {
-		if _, err := v.Token(); err != nil {
-			v.log.ERROR.Printf("token refresh: %v", err)
-		}
+func (v *Identity) RefreshToken(token *oauth2.Token) (*oauth2.Token, error) {
+	ctx := context.WithValue(context.Background(), oauth2.HTTPClient, v.Client)
+	ts := oauth2.ReuseTokenSource(token, OAuth2Config.TokenSource(ctx, token))
+
+	token, err := ts.Token()
+	if err != nil {
+		token, err = v.login()
 	}
+
+	return token, err
 }

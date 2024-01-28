@@ -48,7 +48,7 @@
 									</option>
 								</select>
 							</div>
-							<small v-if="selectedSmartCostLimit > 0">
+							<small v-if="selectedSmartCostLimit !== 0">
 								{{ $t("gridSettings.costLimitDescription") }}
 							</small>
 						</div>
@@ -114,6 +114,7 @@ export default {
 	props: {
 		smartCostLimit: Number,
 		smartCostType: String,
+		tariffGrid: Number,
 		currency: String,
 	},
 	data: function () {
@@ -133,7 +134,10 @@ export default {
 			const values = [];
 			const stepSize = this.optionStepSize;
 			for (let i = 1; i <= 100; i++) {
-				values.push(stepSize * i);
+				const value = this.optionStartValue + stepSize * i;
+				if (value != 0) {
+					values.push(value);
+				}
 			}
 			// add special entry if currently selected value is not in the scale
 			const selected = this.selectedSmartCostLimit;
@@ -142,7 +146,7 @@ export default {
 			}
 			values.sort((a, b) => a - b);
 			return values.map((value) => {
-				const name = `< ${
+				const name = `≤ ${
 					this.isCo2
 						? this.fmtCo2Medium(value)
 						: this.fmtPricePerKWh(value, this.currency)
@@ -150,13 +154,22 @@ export default {
 				return { value, name };
 			});
 		},
+		optionStartValue() {
+			if (!this.tariff) {
+				return 0;
+			}
+			const { min } = this.costRange(this.totalSlots);
+			const minValue = Math.min(0, min);
+			const stepSize = this.optionStepSize;
+			return Math.ceil(minValue / stepSize) * stepSize;
+		},
 		optionStepSize() {
 			if (!this.tariff) {
 				return 1;
 			}
-			const { max } = this.costRange(this.totalSlots);
+			const { min, max } = this.costRange(this.totalSlots);
 			for (const scale of [0.1, 1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000]) {
-				if (max < scale) {
+				if (max - Math.min(0, min) < scale) {
 					return scale / 100;
 				}
 			}
@@ -181,7 +194,8 @@ export default {
 				const day = this.weekdayShort(start);
 				// TODO: handle multiple matching time slots
 				const price = this.findSlotInRange(start, end, rates)?.price;
-				const charging = price < this.selectedSmartCostLimit;
+				const charging =
+					price <= this.selectedSmartCostLimit && this.selectedSmartCostLimit !== 0;
 				const selectable = price !== undefined;
 				result.push({ day, price, startHour, endHour, charging, selectable });
 			}
@@ -225,6 +239,11 @@ export default {
 	watch: {
 		isModalVisible(visible) {
 			if (visible) {
+				this.updateTariff();
+			}
+		},
+		tariffGrid() {
+			if (this.isModalVisible) {
 				this.updateTariff();
 			}
 		},
@@ -292,7 +311,7 @@ export default {
 			const fmtMax = this.isCo2
 				? this.fmtCo2Short(max)
 				: this.fmtPricePerKWh(max, this.currency, true);
-			return `${fmtMin} - ${fmtMax}`;
+			return `${fmtMin} – ${fmtMax}`;
 		},
 		slotHovered(index) {
 			this.activeIndex = index;
@@ -302,7 +321,7 @@ export default {
 				this.selectedSmartCostLimit = 0;
 				return;
 			}
-			const nextOption = this.costOptions.find(({ value }) => value > limit);
+			const nextOption = this.costOptions.find(({ value }) => value >= limit);
 			if (nextOption) {
 				this.selectedSmartCostLimit = nextOption.value;
 			}

@@ -23,14 +23,10 @@
 					</div>
 					<div class="modal-body">
 						<div class="container">
-							<h4
-								v-if="showConfigurablePhases || showCurrentSettings"
-								class="d-flex align-items-center mb-3 mt-4 text-evcc"
-							>
+							<h4 class="d-flex align-items-center mb-3 mt-4 text-evcc">
 								{{ $t("main.loadpointSettings.currents") }}
-								<shopicon-bold-lightning class="ms-1"></shopicon-bold-lightning>
 							</h4>
-							<div v-if="showConfigurablePhases" class="mb-3 row">
+							<div class="mb-3 row">
 								<label
 									:for="formId('phases_0')"
 									class="col-sm-4 col-form-label pt-0"
@@ -38,71 +34,37 @@
 									{{ $t("main.loadpointSettings.phasesConfigured.label") }}
 								</label>
 								<div class="col-sm-8 pe-0">
-									<div class="form-check">
+									<div
+										v-for="phases in phasesOptions"
+										:key="phases"
+										class="form-check"
+									>
 										<input
-											:id="formId('phases_0')"
+											:id="formId(`phases_${phases}`)"
 											v-model.number="selectedPhases"
 											class="form-check-input"
 											type="radio"
 											:name="formId('phases')"
-											:value="0"
+											:value="phases"
 											@change="changePhasesConfigured"
 										/>
-										<label class="form-check-label" :for="formId('phases_0')">
+										<label
+											class="form-check-label"
+											:for="formId(`phases_${phases}`)"
+										>
 											{{
 												$t(
-													"main.loadpointSettings.phasesConfigured.phases_0"
+													`main.loadpointSettings.phasesConfigured.phases_${phases}`
 												)
 											}}
-										</label>
-									</div>
-									<div class="form-check">
-										<input
-											:id="formId('phases_1')"
-											v-model.number="selectedPhases"
-											class="form-check-input"
-											type="radio"
-											:name="formId('phases')"
-											:value="1"
-											@change="changePhasesConfigured"
-										/>
-										<label class="form-check-label" :for="formId('phases_1')">
-											{{
-												$t(
-													"main.loadpointSettings.phasesConfigured.phases_1"
-												)
-											}}
-											<small>
+											<small v-if="phases > 0">
 												{{
 													$t(
-														"main.loadpointSettings.phasesConfigured.phases_1_hint",
-														{ min: minPower1p, max: maxPower1p }
-													)
-												}}
-											</small>
-										</label>
-									</div>
-									<div class="form-check">
-										<input
-											:id="formId('phases_3')"
-											v-model.number="selectedPhases"
-											class="form-check-input"
-											type="radio"
-											:name="formId('phases')"
-											:value="3"
-											@change="changePhasesConfigured"
-										/>
-										<label class="form-check-label" :for="formId('phases_3')">
-											{{
-												$t(
-													"main.loadpointSettings.phasesConfigured.phases_3"
-												)
-											}}
-											<small>
-												{{
-													$t(
-														"main.loadpointSettings.phasesConfigured.phases_3_hint",
-														{ min: minPower3p, max: maxPower3p }
+														`main.loadpointSettings.phasesConfigured.phases_${phases}_hint`,
+														{
+															min: minPowerPhases(phases),
+															max: maxPowerPhases(phases),
+														}
 													)
 												}}
 											</small>
@@ -111,7 +73,7 @@
 								</div>
 							</div>
 
-							<div v-if="$hiddenFeatures()" class="mb-3 row">
+							<div class="mb-3 row">
 								<label
 									:for="formId('maxcurrent')"
 									class="col-sm-4 col-form-label pt-0 pt-sm-2"
@@ -126,7 +88,7 @@
 										@change="changeMaxCurrent"
 									>
 										<option
-											v-for="{ value, name } in currentOptions(true, 16)"
+											v-for="{ value, name } in maxCurrentOptions"
 											:key="value"
 											:value="value"
 										>
@@ -137,7 +99,7 @@
 								</div>
 							</div>
 
-							<div v-if="$hiddenFeatures()" class="mb-3 row">
+							<div class="mb-3 row">
 								<label
 									:for="formId('mincurrent')"
 									class="col-sm-4 col-form-label pt-0 pt-sm-2"
@@ -152,7 +114,7 @@
 										@change="changeMinCurrent"
 									>
 										<option
-											v-for="{ value, name } in currentOptions(false, 6)"
+											v-for="{ value, name } in minCurrentOptions"
 											:key="value"
 											:value="value"
 										>
@@ -163,12 +125,6 @@
 								</div>
 							</div>
 						</div>
-						<p class="small mt-3 text-muted mb-0">
-							<strong class="text-evcc">
-								{{ $t("main.loadpointSettings.disclaimerHint") }}
-							</strong>
-							{{ $t("main.loadpointSettings.disclaimerText") }}
-						</p>
 					</div>
 				</div>
 			</div>
@@ -177,11 +133,22 @@
 </template>
 
 <script>
-import "@h2d2/shopicons/es/bold/lightning";
-import "@h2d2/shopicons/es/bold/car3";
 import formatter from "../mixins/formatter";
 
 const V = 230;
+
+const PHASES_AUTO = 0;
+const PHASES_1 = 1;
+const PHASES_3 = 3;
+
+const range = (start, stop, step = -1) =>
+	Array.from({ length: (stop - start) / step + 1 }, (_, i) => start + i * step);
+
+const insertSorted = (arr, num) => {
+	const uniqueSet = new Set(arr);
+	uniqueSet.add(num);
+	return [...uniqueSet].sort((a, b) => b - a);
+};
 
 export default {
 	name: "LoadpointSettingsModal",
@@ -189,6 +156,8 @@ export default {
 	props: {
 		id: [String, Number],
 		phasesConfigured: Number,
+		phasesActive: Number,
+		phases1p3p: Boolean,
 		minSoc: Number,
 		maxCurrent: Number,
 		minCurrent: Number,
@@ -203,29 +172,41 @@ export default {
 		};
 	},
 	computed: {
-		maxPower1p: function () {
-			return this.fmtKw(this.maxCurrent * V);
-		},
-		minPower1p: function () {
-			return this.fmtKw(this.minCurrent * V);
-		},
-		maxPower3p: function () {
-			return this.fmtKw(this.maxCurrent * V * 3);
-		},
-		minPower3p: function () {
-			return this.fmtKw(this.minCurrent * V * 3);
+		phasesOptions: function () {
+			if (this.phases1p3p) {
+				return [PHASES_AUTO, PHASES_3, PHASES_1];
+			}
+			return [PHASES_3, PHASES_1];
 		},
 		maxPower: function () {
-			return this.phasesConfigured === 1 ? this.maxPower1p : this.maxPower3p;
+			if (this.phasesConfigured === PHASES_AUTO) {
+				return this.maxPowerPhases(3);
+			}
+			if ([PHASES_3, PHASES_1].includes(this.phasesConfigured)) {
+				return this.maxPowerPhases(this.phasesConfigured);
+			}
+			return this.fmtKw(this.maxCurrent * V * this.phasesActive);
 		},
 		minPower: function () {
-			return this.phasesConfigured === 3 ? this.minPower3p : this.minPower1p;
+			if (this.phasesConfigured === PHASES_AUTO) {
+				return this.minPowerPhases(1);
+			}
+			if ([PHASES_3, PHASES_1].includes(this.phasesConfigured)) {
+				return this.minPowerPhases(this.phasesConfigured);
+			}
+			return this.fmtKw(this.minCurrent * V * this.phasesActive);
 		},
-		showConfigurablePhases: function () {
-			return [0, 1, 3].includes(this.phasesConfigured);
+		minCurrentOptions: function () {
+			const opt1 = [...range(Math.floor(this.maxCurrent), 1), 0.5, 0.25, 0.125];
+			// ensure that current value is always included
+			const opt2 = insertSorted(opt1, this.minCurrent);
+			return opt2.map((value) => this.currentOption(value, value === 6));
 		},
-		showCurrentSettings: function () {
-			return this.$hiddenFeatures();
+		maxCurrentOptions: function () {
+			const opt1 = range(32, Math.ceil(this.minCurrent));
+			// ensure that current value is always included
+			const opt2 = insertSorted(opt1, this.maxCurrent);
+			return opt2.map((value) => this.currentOption(value, value === 16));
 		},
 	},
 	watch: {
@@ -243,6 +224,12 @@ export default {
 		},
 	},
 	methods: {
+		maxPowerPhases: function (phases) {
+			return this.fmtKw(this.maxCurrent * V * phases);
+		},
+		minPowerPhases: function (phases) {
+			return this.fmtKw(this.minCurrent * V * phases);
+		},
 		formId: function (name) {
 			return `loadpoint_${this.id}_${name}`;
 		},
@@ -255,18 +242,12 @@ export default {
 		changePhasesConfigured: function () {
 			this.$emit("phasesconfigured-updated", this.selectedPhases);
 		},
-		currentOptions: function (max, defaultCurrent = 16) {
-			const result = [];
-			const toValue = max ? 32 : this.maxCurrent;
-			const fromValue = max ? this.minCurrent : 1;
-			for (let value = toValue; value >= fromValue; value--) {
-				let name = `${value} A`;
-				if (value === defaultCurrent) {
-					name += ` (${this.$t("main.loadpointSettings.default")})`;
-				}
-				result.push({ value, name });
+		currentOption: function (value, isDefault) {
+			let name = `${this.fmtNumber(value)} A`;
+			if (isDefault) {
+				name += ` (${this.$t("main.loadpointSettings.default")})`;
 			}
-			return result;
+			return { value, name };
 		},
 	},
 };

@@ -1,8 +1,8 @@
-template: THOR Heizstab
+template: thor
 products:
-  - brand: Thor
+  - brand: my-PV
     description:
-      generic: Meter
+      generic: AC Thor
 params:
   - name: usage
     choice: ["aux"]

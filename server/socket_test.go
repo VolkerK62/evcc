@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEncode(t *testing.T) {
@@ -27,7 +28,24 @@ func TestEncode(t *testing.T) {
 
 	for _, tc := range tc {
 		out, err := encode(tc.in)
-		assert.NoError(t, err)
+		require.NoError(t, err)
+		assert.Equal(t, tc.out, out)
+	}
+}
+
+func TestEncodeSlice(t *testing.T) {
+	tc := []struct {
+		in  interface{}
+		out string
+	}{
+		{[]string{"a", "b"}, `["a","b"]`},
+		{[2]int64{1, 2}, `[1,2]`},
+		{[]float64{1, math.NaN()}, `[1,null]`},
+	}
+
+	for _, tc := range tc {
+		out, err := encodeSlice(tc.in)
+		require.NoError(t, err)
 		assert.Equal(t, tc.out, out)
 	}
 }

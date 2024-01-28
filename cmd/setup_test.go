@@ -16,7 +16,7 @@ loadpoints:
 `
 
 func TestYamlOff(t *testing.T) {
-	var conf config
+	var conf globalConfig
 	viper.SetConfigType("yaml")
 	if err := viper.ReadConfig(strings.NewReader(sample)); err != nil {
 		t.Error(err)
@@ -31,7 +31,7 @@ func TestYamlOff(t *testing.T) {
 		t.Error(err)
 	}
 
-	if lp.Mode != api.ModeOff {
-		t.Errorf("expected `off`, got %s", lp.Mode)
+	if lp.Mode_ != api.ModeOff {
+		t.Errorf("expected `off`, got %s", lp.Mode_)
 	}
 }

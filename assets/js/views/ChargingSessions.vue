@@ -1,16 +1,6 @@
 <template>
 	<div class="container px-4">
-		<header class="d-flex justify-content-between align-items-center py-3">
-			<h1 class="mb-1 pt-1 d-flex text-nowrap text-truncate">
-				<router-link class="evcc-default-text" to="/">
-					<shopicon-regular-home size="s" class="home"></shopicon-regular-home>
-				</router-link>
-				<div size="s" class="mx-2 flex-grow-0 flex-shrink-0 fw-normal">/</div>
-				<span class="text-truncate">{{ $t("sessions.title") }}</span>
-			</h1>
-			<TopNavigation />
-		</header>
-
+		<TopHeader :title="$t('sessions.title')" />
 		<div class="row">
 			<main class="col-12">
 				<div class="d-flex align-items-baseline justify-content-between my-3 my-md-5">
@@ -135,35 +125,27 @@
 									</div>
 								</th>
 								<th
-									v-for="column in columns"
+									v-for="(column, index) in columnsPerBreakpoint"
 									:key="column.name"
 									scope="col"
 									:data-testid="`sessions-head-${column.name}`"
-									class="align-top text-end d-none d-md-table-cell"
+									class="align-top text-end"
 								>
-									{{ $t(`sessions.${column.name}`) }}<br />
-									<div class="text-gray fw-normal">{{ column.unit }}</div>
-								</th>
-								<th
-									scope="col"
-									class="align-top text-end d-md-none"
-									data-testid="sessions-head-mobile"
-								>
-									<span v-if="columns.length === 1">
-										{{ $t(`sessions.${mobileColumn.name}`) }}
-									</span>
 									<CustomSelect
-										v-else
-										:selected="selectedMobileColumn"
-										:options="mobileColumnOptions"
-										data-testid="mobile-column"
-										@change="changeMobileColumn"
+										v-if="tooMuchColumns"
+										:selected="column.name"
+										:options="columnOptions"
+										data-testid="column"
+										@change="selectColumnPosition(index, $event.target.value)"
 									>
 										<span class="text-decoration-underline">
-											{{ $t(`sessions.${mobileColumn.name}`) }}
+											{{ $t(`sessions.${column.name}`) }}
 										</span>
 									</CustomSelect>
-									<div class="text-gray fw-normal">{{ mobileColumn.unit }}</div>
+									<span v-else>
+										{{ $t(`sessions.${column.name}`) }}
+									</span>
+									<div class="text-gray fw-normal">{{ column.unit }}</div>
 								</th>
 							</tr>
 						</thead>
@@ -184,20 +166,13 @@
 								></th>
 								<th scope="col" class="d-md-none"></th>
 								<th
-									v-for="column in columns"
+									v-for="column in columnsPerBreakpoint"
 									:key="column.name"
 									:data-testid="`sessions-foot-${column.name}`"
 									scope="col"
-									class="align-top text-end d-none d-md-table-cell"
+									class="align-top text-end"
 								>
 									{{ column.format(column.total) }}
-								</th>
-								<th
-									scope="col"
-									data-testid="sessions-foot-mobile"
-									class="align-top text-end d-md-none"
-								>
-									{{ mobileColumn.format(mobileColumn.total) }}
 								</th>
 							</tr>
 						</tfoot>
@@ -223,25 +198,14 @@
 									<div>{{ session.vehicle }}</div>
 								</td>
 								<td
-									v-for="column in columns"
+									v-for="column in columnsPerBreakpoint"
 									:key="column.name"
-									class="text-end d-none d-md-table-cell"
+									class="text-end"
 								>
 									<span v-if="column.value(session) === null" class="text-gray">
 										-
 									</span>
 									<span v-else>{{ column.format(column.value(session)) }}</span>
-								</td>
-								<td class="text-end d-md-none">
-									<span
-										v-if="mobileColumn.value(session) === null"
-										class="text-gray"
-									>
-										-
-									</span>
-									<span v-else>{{
-										mobileColumn.format(mobileColumn.value(session))
-									}}</span>
 								</td>
 							</tr>
 						</tbody>
@@ -268,7 +232,8 @@
 			</main>
 			<ChargingSessionModal
 				:session="selectedSession"
-				:vehicles="vehiclesObjects"
+				:vehicles="vehicleList"
+				:currency="currency"
 				@session-changed="loadSessions"
 			/>
 		</div>
@@ -277,8 +242,6 @@
 
 <script>
 import Modal from "bootstrap/js/dist/modal";
-import TopNavigation from "../components/TopNavigation.vue";
-import "@h2d2/shopicons/es/regular/home";
 import "@h2d2/shopicons/es/regular/angledoubleleftsmall";
 import "@h2d2/shopicons/es/regular/angledoublerightsmall";
 import formatter from "../mixins/formatter";
@@ -286,11 +249,23 @@ import api from "../api";
 import store from "../store";
 import CustomSelect from "../components/CustomSelect.vue";
 import ChargingSessionModal from "../components/ChargingSessionModal.vue";
+import breakpoint from "../mixins/breakpoint";
+import settings from "../settings";
+import TopHeader from "../components/TopHeader.vue";
+
+const COLUMNS_PER_BREAKPOINT = {
+	xs: 1,
+	sm: 2,
+	md: 3,
+	lg: 4,
+	xl: 5,
+	xxl: 6,
+};
 
 export default {
 	name: "ChargingSessions",
-	components: { TopNavigation, ChargingSessionModal, CustomSelect },
-	mixins: [formatter],
+	components: { ChargingSessionModal, CustomSelect, TopHeader },
+	mixins: [formatter, breakpoint],
 	props: {
 		notifications: Array,
 		month: { type: Number, default: () => new Date().getMonth() + 1 },
@@ -302,10 +277,17 @@ export default {
 		return {
 			sessions: [],
 			selectedSessionId: undefined,
-			selectedMobileColumn: undefined,
+			selectedColumns: settings.sessionColumns,
 		};
 	},
+	head() {
+		return { title: `${this.$t("sessions.title")} | evcc` };
+	},
 	computed: {
+		topNavigation: function () {
+			const vehicleLogins = store.state.auth ? store.state.auth.vehicles : {};
+			return { vehicleLogins, ...this.collectProps(TopNavigation, store.state) };
+		},
 		currentSessions() {
 			const sessionsWithDefaults = this.sessions.map((session) => {
 				const loadpoint = session.loadpoint || this.$t("main.loadpoint.fallbackName");
@@ -320,6 +302,9 @@ export default {
 		},
 		filteredSessions() {
 			return this.currentSessions.filter(this.filterByLoadpoint).filter(this.filterByVehicle);
+		},
+		maxColumns() {
+			return COLUMNS_PER_BREAKPOINT[this.breakpoint] || 1;
 		},
 		columns() {
 			const columns = [
@@ -358,6 +343,26 @@ export default {
 					value: (session) => session.co2PerKWh,
 					format: (value) => this.fmtNumber(value, 0),
 				},
+				{
+					name: "chargeDuration",
+					unit: "h:mm",
+					total: this.chargeDuration,
+					value: (session) => session.chargeDuration,
+					format: (value) => this.fmtDurationNs(value, false, "h"),
+				},
+				{
+					name: "avgPower",
+					unit: "kW",
+					total: this.avgPower,
+					value: (session) => {
+						if (session.chargedEnergy && session.chargeDuration) {
+							return session.chargedEnergy / this.nsToHours(session.chargeDuration);
+						}
+						return null;
+					},
+					format: (value) =>
+						value ? this.fmtKw(value * 1e3, true, false, 1) : undefined,
+				},
 			];
 			// only columns with values are shown
 			return columns.filter((column) => {
@@ -365,15 +370,33 @@ export default {
 				return this.currentSessions.some((s) => column.value(s));
 			});
 		},
-		mobileColumn() {
-			const column = this.columns.find((column) => column.name === this.selectedMobileColumn);
-			return column || this.columns[0];
+		tooMuchColumns() {
+			return this.columns.length > this.maxColumns;
 		},
-		mobileColumnOptions() {
+		sortedColumns() {
+			const columns = [...this.columns];
+			let sorted = [];
+			for (let name of this.selectedColumns) {
+				if (!name && columns.length) {
+					sorted.push(columns.shift());
+				} else if (columns.some((c) => c.name === name)) {
+					const column = columns.find((c) => c.name === name);
+					sorted.push(column);
+					let index = columns.indexOf(column);
+					columns.splice(index, 1);
+				}
+			}
+			return sorted.concat(columns);
+		},
+		columnsPerBreakpoint() {
+			return this.sortedColumns.slice(0, this.maxColumns);
+		},
+		columnOptions() {
 			return this.columns.map((column) => {
 				return {
 					name: this.$t(`sessions.${column.name}`),
 					value: column.name,
+					disabled: this.columnsPerBreakpoint.find((c) => c.name === column.name),
 				};
 			});
 		},
@@ -408,8 +431,27 @@ export default {
 		chargedEnergy() {
 			return this.filteredSessions.reduce((total, s) => total + s.chargedEnergy, 0);
 		},
+		chargeDuration() {
+			return this.filteredSessions.reduce((total, s) => total + s.chargeDuration, 0);
+		},
 		price() {
 			return this.filteredSessions.reduce((total, s) => total + s.price, 0);
+		},
+		avgPower() {
+			const { energy, hours } = this.filteredSessions
+				.filter((s) => s.chargedEnergy && s.chargeDuration)
+				.reduce(
+					(total, s) => {
+						total.energy += s.chargedEnergy;
+						total.hours += this.nsToHours(s.chargeDuration);
+						return total;
+					},
+					{ energy: 0, hours: 0 }
+				);
+			if (energy && hours) {
+				return energy / hours;
+			}
+			return null;
 		},
 		showVehicles() {
 			return this.hasMultipleVehicles || this.vehicleFilter;
@@ -447,7 +489,10 @@ export default {
 					}),
 					{ emittedCo2: 0, chargedEnergy: 0 }
 				);
-			return total.emittedCo2 / total.chargedEnergy;
+			if (total.chargedEnergy && total.emittedCo2) {
+				return total.emittedCo2 / total.chargedEnergy;
+			}
+			return null;
 		},
 		solarPercentage() {
 			const total = this.filteredSessions
@@ -469,12 +514,9 @@ export default {
 		vehicles() {
 			return [...new Set(this.currentSessions.map((s) => s.vehicle))];
 		},
-		vehiclesObjects() {
-			return (
-				store.state.vehicles?.map((v, index) => {
-					return { id: index, title: v };
-				}) || []
-			);
+		vehicleList() {
+			const vehicles = store.state.vehicles || {};
+			return Object.entries(vehicles).map(([name, vehicle]) => ({ name, ...vehicle }));
 		},
 		selectedSession() {
 			return this.sessions.find((s) => s.id == this.selectedSessionId);
@@ -484,7 +526,7 @@ export default {
 		},
 		headline() {
 			const date = new Date();
-			date.setMonth(this.month - 1);
+			date.setMonth(this.month - 1, 1);
 			date.setFullYear(this.year);
 			return this.fmtMonthYear(date);
 		},
@@ -497,7 +539,7 @@ export default {
 		prevDate() {
 			const date = new Date();
 			date.setFullYear(this.year);
-			date.setMonth(this.month - 2);
+			date.setMonth(this.month - 2, 1);
 			return date;
 		},
 		prevYearMonth() {
@@ -512,7 +554,7 @@ export default {
 		nextDate() {
 			const date = new Date();
 			date.setFullYear(this.year);
-			date.setMonth(this.month);
+			date.setMonth(this.month, 1);
 			return date;
 		},
 		nextYearMonth() {
@@ -541,6 +583,9 @@ export default {
 		this.loadSessions();
 	},
 	methods: {
+		nsToHours(ns) {
+			return ns / 1e9 / 3600;
+		},
 		filterByLoadpoint(session) {
 			return !this.loadpointFilter || session.loadpoint === this.loadpointFilter;
 		},
@@ -557,8 +602,9 @@ export default {
 				.filter(this.filterByVehicle)
 				.filter((s) => !loadpoint || s.loadpoint === loadpoint).length;
 		},
-		changeMobileColumn(event) {
-			this.selectedMobileColumn = event.target.value;
+		selectColumnPosition(index, value) {
+			this.selectedColumns[index] = value;
+			settings.sessionColumns = [...this.selectedColumns];
 		},
 		changeLoadpointFilter(event) {
 			const loadpoint = event.target.value || undefined;
@@ -580,7 +626,7 @@ export default {
 		csvHrefLink(year, month) {
 			const params = new URLSearchParams({
 				format: "csv",
-				lang: this.$i18n.locale,
+				lang: this.$i18n?.locale,
 			});
 			if (year && month) {
 				params.append("year", year);
@@ -592,21 +638,6 @@ export default {
 };
 </script>
 <style scoped>
-.home {
-	height: 22px;
-	width: 22px;
-	position: relative;
-	top: -3px;
-}
-.custom-select {
-	left: 0;
-	top: 0;
-	bottom: 0;
-	right: 0;
-	position: absolute;
-	opacity: 0;
-	-webkit-appearance: menulist-button;
-}
 .table {
 	border-collapse: separate;
 	border-spacing: 0;

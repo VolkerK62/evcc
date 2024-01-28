@@ -36,12 +36,10 @@ func NewWattpilotFromConfig(other map[string]interface{}) (api.Charger, error) {
 	}
 
 	return NewWattpilot(cc.URI, cc.Password, cc.Cache)
-
 }
 
 // NewWattpilot creates Wattpilot charger
 func NewWattpilot(uri, password string, cache time.Duration) (api.Charger, error) {
-
 	c := &Wattpilot{
 		api: wattpilot.New(uri, password),
 	}
@@ -83,7 +81,7 @@ func (c *Wattpilot) Enabled() (bool, error) {
 
 // Enable implements the api.Charger interface
 func (c *Wattpilot) Enable(enable bool) error {
-	var forceState int
+	forceState := 0 // neutral; 2 = on
 	if !enable {
 		forceState = 1 // off
 	}

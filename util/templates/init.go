@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"slices"
 	"sync"
 	"text/template"
 
 	"github.com/evcc-io/evcc/templates/definition"
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
 
@@ -32,9 +32,9 @@ func init() {
 
 	baseTmpl = template.Must(template.ParseFS(includeFS, "includes/*.tpl"))
 
-	loadTemplates(Charger)
-	loadTemplates(Meter)
-	loadTemplates(Vehicle)
+	for _, class := range ClassValues() {
+		loadTemplates(class)
+	}
 }
 
 func FromBytes(b []byte) (Template, error) {
@@ -97,7 +97,6 @@ func loadTemplates(class Class) {
 
 		return nil
 	})
-
 	if err != nil {
 		panic(err)
 	}
