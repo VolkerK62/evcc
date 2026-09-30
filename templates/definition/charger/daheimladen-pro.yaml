@@ -18,8 +18,8 @@ params:
       de: Phasenumschaltpause
       en: Phase switching pause
     help:
-      de: Pause bei der Phasenumschaltung in Sekunden (30-120). Erfordert Firmware ab 4.08. Leer lassen für den Firmware-Standard (120 s).
-      en: Pause during phase switching in seconds (30-120). Requires firmware 4.08 or later. Leave empty to use the firmware default (120 s).
+      de: Pause bei der Phasenumschaltung in Sekunden (30-120, andere Werte werden begrenzt). Erfordert Firmware ab 4.08. Leer lassen für den Firmware-Standard (120 s).
+      en: Pause during phase switching in seconds (30-120, other values will be limited). Requires firmware 4.08 or later. Leave empty to use the firmware default (120 s).
     example: 60
 render: |
   type: daheimladen
